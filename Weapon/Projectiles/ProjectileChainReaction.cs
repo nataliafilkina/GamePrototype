@@ -1,4 +1,4 @@
-﻿using Expansion;
+using Expansion;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -13,20 +13,22 @@ namespace Weapon
         private float _jumpRadius;
         [SerializeField]
         private float _differenceDamage;
+        [SerializeField]
+        private Transform _detectionPoint;
 
         private List<Transform> _beatenEnemies = new();
         private Transform _currentEnemy;
-        private Transform _nextEnemy;
+        private Collider2D _nextEnemyCollider;
 
         private void Update()
         {
-            RaycastHit2D hitInfo = Physics2D.Raycast(transform.position, transform.up, _distanceRayCheckCollisions, _solid);
+            RaycastHit2D hitInfo = Physics2D.Raycast(_detectionPoint.position, transform.up, _distanceRayCheckCollisions, _solid);
             
             if (hitInfo.collider != null && !hitInfo.collider.CompareTag("Player"))
             {
                 if (hitInfo.collider.TryGetComponent(out Enemy enemy))
                 {
-                    if(_nextEnemy == null || !_beatenEnemies.Contains(enemy.transform))
+                    if (_beatenEnemies.Contains(enemy.transform) == false)
                         DetectedEnemy(enemy);
                 }
                 else
@@ -35,11 +37,11 @@ namespace Weapon
 
             if (_countOfJumps >= 0)
             {
-                if (_nextEnemy != null)
+                if (_nextEnemyCollider != null)
                 {
-                    transform.position = Vector2.MoveTowards(transform.position, _nextEnemy.position, _speed * Time.deltaTime);
-                    //transform.rotation = Quaternion.FromToRotation(transform.position, _nextEnemy.position - transform.position);
-                    transform.right = _nextEnemy.position - transform.position;
+                    Vector3 targetPoint = _nextEnemyCollider.ClosestPoint(transform.position);
+                    transform.position = Vector2.MoveTowards(transform.position, targetPoint, _speed * Time.deltaTime);
+                    transform.right = targetPoint - transform.position;
                 }
                 else
                     transform.Translate(_speed * Time.deltaTime * Vector2.right);
@@ -56,10 +58,10 @@ namespace Weapon
             _damage -= _differenceDamage;
             _beatenEnemies.Add(enemy.transform);
 
-            _nextEnemy = FindNextTarget();
+            _nextEnemyCollider = FindNextTarget()?.GetComponent<Collider2D>();
 
-            if (_nextEnemy == null || _differenceDamage <= 0)
-                Destroy(gameObject);
+            if (_nextEnemyCollider == null || _differenceDamage <= 0)
+                OnBurst();
 
             _currentEnemy = enemy.transform;
             StopCoroutine(_destroyCoroutine);
