@@ -6,11 +6,11 @@ namespace Weapon
     {
         private void Update()
         {
-            RaycastHit2D hitInfo = Physics2D.Raycast(transform.position, transform.up, _distanceRayCheckCollisions, _solid);
+            RaycastHit2D hitInfo = Physics2D.Raycast(transform.position, transform.right, _distanceRayCheckCollisions, LayerMask.GetMask(_hitLayers));
 
-            if (hitInfo.collider != null && !hitInfo.collider.CompareTag("Player"))
+            if (hitInfo.collider != null)
             {
-                Collider2D[] attackedColliders = Physics2D.OverlapCircleAll(transform.position, _attackRange, _solid);
+                Collider2D[] attackedColliders = Physics2D.OverlapCircleAll(transform.position, _attackRange, _enemy);
 
                 foreach (var collider in attackedColliders)
                 {
@@ -18,7 +18,7 @@ namespace Weapon
                         DetectedEnemy(enemy);
                 }
 
-                OnBurst();
+                Destroy(gameObject);
             }
 
             transform.Translate(_speed * Time.deltaTime * Vector2.right);
