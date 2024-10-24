@@ -21,11 +21,15 @@ namespace Weapon
         protected float _attackRange;
 
         protected LayerMask _solid;
+        protected LayerMask _enemy;
+        protected string[] _hitLayers;
         protected Coroutine _destroyCoroutine;
 
         private void Start()
         {
             _solid = LayerMask.GetMask("Solid");
+            _enemy = LayerMask.GetMask("Enemy");
+            _hitLayers = new string[] { "Solid", "Enemy"};
             _destroyCoroutine =  StartCoroutine(Coroutines.DoAfter(_lifeTime, () => Destroy(gameObject)));
         }
 
@@ -38,36 +42,38 @@ namespace Weapon
             _attackRange = weaponInfo.AttackRange;
         }
 
-        protected virtual void OnBurst()
+        protected virtual void OnDestroy()
         {
             if (_burst != null)
                 Instantiate(_burst, transform.position, transform.rotation);
-
-            Destroy(gameObject);
         }
 
         protected virtual void DetectedEnemy(Enemy enemy)
         {
-            enemy.TakeDamage(_parent, _damage);
-
-            if(enemy.TryGetComponent<EffectableEntity>(out var effectable))
+            if (IsNoObstacleTo(enemy.transform))
             {
-                foreach (var effectData in _effectsData)
+                enemy.TakeDamage(_parent, _damage);
+
+                if(enemy.TryGetComponent<EffectableEntity>(out var effectable))
                 {
-                    //Value - probability of effect triggering
-                    if (effectData.probability >= Random.Range(1, 101))
+                    foreach (var effectData in _effectsData)
                     {
-                        var effect = effectData.effect.InitializeEffect(_parent, effectable.gameObject);
-                        effectable.AddEffect(effect);
+                        //Value - probability of effect triggering
+                        if (effectData.probability >= Random.Range(1, 101))
+                        {
+                            var effect = effectData.effect.InitializeEffect(_parent, effectable.gameObject);
+                            effectable.AddEffect(effect);
+                        }
                     }
                 }
             }
         }
 
-        private void OnDrawGizmosSelected()
+        protected virtual bool IsNoObstacleTo(Transform endPoint)
         {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(transform.position, _attackRange);
+            RaycastHit2D hitInfo = Physics2D.Linecast(transform.position, endPoint.position, _solid);
+
+            return hitInfo.collider == null;
         }
     }
 }
