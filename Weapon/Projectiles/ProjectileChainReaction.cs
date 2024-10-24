@@ -1,4 +1,3 @@
-using Expansion;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -17,61 +16,56 @@ namespace Weapon
         private Transform _detectionPoint;
 
         private List<Transform> _beatenEnemies = new();
-        private Transform _currentEnemy;
-        private Collider2D _nextEnemyCollider;
+        private Transform _nextTarget;
 
         private void Update()
         {
-            RaycastHit2D hitInfo = Physics2D.Raycast(_detectionPoint.position, transform.up, _distanceRayCheckCollisions, _solid);
+            RaycastHit2D hitInfo = Physics2D.Raycast(_detectionPoint.position, transform.right, _distanceRayCheckCollisions, LayerMask.GetMask(_hitLayers));
             
-            if (hitInfo.collider != null && !hitInfo.collider.CompareTag("Player"))
+            if(hitInfo.collider != null)
             {
                 if (hitInfo.collider.TryGetComponent(out Enemy enemy))
                 {
-                    if (_beatenEnemies.Contains(enemy.transform) == false)
+                    if (!_beatenEnemies.Contains(enemy.transform))
+                    {
                         DetectedEnemy(enemy);
+                        StopCoroutine(_destroyCoroutine);
+                        Jump(enemy);
+                    }
                 }
                 else
-                    OnBurst();
+                    Destroy(gameObject);
             }
-
-            if (_countOfJumps >= 0)
+            
+            if (_nextTarget != null)
             {
-                if (_nextEnemyCollider != null)
-                {
-                    Vector3 targetPoint = _nextEnemyCollider.ClosestPoint(transform.position);
-                    transform.position = Vector2.MoveTowards(transform.position, targetPoint, _speed * Time.deltaTime);
-                    transform.right = targetPoint - transform.position;
-                }
-                else
-                    transform.Translate(_speed * Time.deltaTime * Vector2.right);
+                transform.position = Vector2.MoveTowards(transform.position, _nextTarget.position, _speed * Time.deltaTime);
+                transform.right = _nextTarget.position - transform.position;
             }
             else
-                OnBurst();
+                transform.Translate(_speed * Time.deltaTime * Vector2.right);
         }
 
-        protected override void DetectedEnemy(Enemy enemy)
+        private void Jump(Enemy lastEnemy)
         {
-            base.DetectedEnemy(enemy);
-
             _countOfJumps--;
             _damage -= _differenceDamage;
-            _beatenEnemies.Add(enemy.transform);
 
-            _nextEnemyCollider = FindNextTarget()?.GetComponent<Collider2D>();
+            if (_countOfJumps > 0 && _damage > 0)
+            {
+                _beatenEnemies.Add(lastEnemy.transform);
+                _nextTarget = FindNextTarget();
 
-            if (_nextEnemyCollider == null || _differenceDamage <= 0)
-                OnBurst();
-
-            _currentEnemy = enemy.transform;
-            StopCoroutine(_destroyCoroutine);
-            _destroyCoroutine = StartCoroutine(Coroutines.DoAfter(_lifeTime, () => Destroy(gameObject)));
-
+                if (_nextTarget == null)
+                    Destroy(gameObject);
+            }
+            else
+                Destroy(gameObject);
         }
 
         private Transform FindNextTarget()
         {
-            Collider2D[] attackedColliders = Physics2D.OverlapCircleAll(transform.position, _jumpRadius, _solid);
+            Collider2D[] attackedColliders = Physics2D.OverlapCircleAll(transform.position, _jumpRadius, _enemy);
             var enemies = TakeEnemies(attackedColliders);
             var orderEnemies = OrderByDistance(enemies, _countOfJumps + 1);
 
@@ -85,8 +79,8 @@ namespace Weapon
             foreach (var collider in colliders)
             {
                 if(collider.TryGetComponent<Enemy>(out var enemy) && 
-                    enemy.transform != _currentEnemy &&
-                    !_beatenEnemies.Contains(enemy.transform))
+                    !_beatenEnemies.Contains(enemy.transform)
+                    && IsNoObstacleTo(enemy.transform))
                     transforms.Add(enemy.transform);
             }
 
@@ -99,6 +93,13 @@ namespace Weapon
             return transforms.OrderBy(variable => (variable.position - currentPosition).sqrMagnitude).
                            Take(Mathf.Min(lengthOrder, transforms.Count())).
                            ToList();
+        }
+
+        private void OnDrawGizmos()
+        {
+            Gizmos.color = Color.yellow;
+
+            Gizmos.DrawWireSphere(transform.position, _jumpRadius);
         }
     }
 }
