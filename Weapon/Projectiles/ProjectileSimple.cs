@@ -18,7 +18,7 @@ namespace Weapon
                         DetectedEnemy(enemy);
                 }
 
-                Destroy(gameObject);
+                OnBurst();
             }
 
             transform.Translate(_speed * Time.deltaTime * Vector2.right);
