@@ -42,10 +42,12 @@ namespace Weapon
             _attackRange = weaponInfo.AttackRange;
         }
 
-        protected virtual void OnDestroy()
+        protected virtual void OnBurst()
         {
             if (_burst != null)
                 Instantiate(_burst, transform.position, transform.rotation);
+
+            Destroy(gameObject);
         }
 
         protected virtual void DetectedEnemy(Enemy enemy)
