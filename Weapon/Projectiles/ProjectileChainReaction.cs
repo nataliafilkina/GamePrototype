@@ -34,7 +34,7 @@ namespace Weapon
                     }
                 }
                 else
-                    Destroy(gameObject);
+                    OnBurst();
             }
             
             if (_nextTarget != null)
@@ -57,10 +57,10 @@ namespace Weapon
                 _nextTarget = FindNextTarget();
 
                 if (_nextTarget == null)
-                    Destroy(gameObject);
+                    OnBurst();
             }
             else
-                Destroy(gameObject);
+                OnBurst();
         }
 
         private Transform FindNextTarget()
